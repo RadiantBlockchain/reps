@@ -21,14 +21,14 @@ Those proposing changes should consider that ultimately consent may rest with th
 | Process
 | Replaced
 |- style="background-color: #cfffcf"
-| [[bip-0021.mediawiki|21]]
+| [[rep-0021.mediawiki|21]]
 |
 | Non-Fungible Tokens (NFT)
 |  
 | Process
 | Active
 |-
-| [[bip-td.mediawiki|tbd]]
+| [[rep-tbd.mediawiki|tbd]]
 |
 | -
 | 
