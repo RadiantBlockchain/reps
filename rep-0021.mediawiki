@@ -1,0 +1,47 @@
+RECENT CHANGES:
+* (30 November 2023): Initial
+<pre>
+  REP: 21
+  Layer: Script
+  Title: Non-Fungible Tokens (NFT)
+  Author: Arvivi
+  Comments-Summary: No comments yet.
+  Comments-URI: https://github.com/radiantblockchain/reps/wiki/Comments:REP-0021
+  Status: Process
+  Type: Draft
+  Created: 2022-11-30
+  License: BSD-2-Clause
+</pre>
+
+==Abstract==
+
+tbd 
+
+==Copyright==
+
+This REP is licensed under the 2-clause BSD license.
+
+==Motivation==
+ 
+ tbd
+
+ 
+===Conventions===
+
+tbd
+  
+===Use cases===
+
+tbd 
+
+==Security==
+
+tbd
+
+===Implications===
+ 
+==Test Samples==
+ 
+==Acknowledgements==
+
+*  

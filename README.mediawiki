@@ -14,23 +14,23 @@ Those proposing changes should consider that ultimately consent may rest with th
 !Type
 !Status
 |- style="background-color: #ffcfcf"
-| [[rep-0020.mediawiki|1]]
+| [[rep-0020.mediawiki|20]]
 |
 | Fungible Tokens (FT)
 | 
 | Process
 | Replaced
 |- style="background-color: #cfffcf"
-| [[bip-0002.mediawiki|2]]
+| [[bip-0021.mediawiki|21]]
 |
-| REP process, revised
+| Non-Fungible Tokens (NFT)
 |  
 | Process
 | Active
 |-
-| [[bip-0021.mediawiki|8]]
+| [[bip-td.mediawiki|tbd]]
 |
-| Non-Fungible Tokens (NFT)
+| -
 | 
 | Informational
 | Draft
