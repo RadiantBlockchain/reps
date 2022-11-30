@@ -18,8 +18,8 @@ Those proposing changes should consider that ultimately consent may rest with th
 |
 | Fungible Tokens (FT)
 | 
-| Process
-| Replaced
+| Information
+| Draft
 |- style="background-color: #cfffcf"
 | [[rep-0021.mediawiki|21]]
 |
