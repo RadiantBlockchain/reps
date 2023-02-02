@@ -104,6 +104,7 @@ OP_ENDIF
 ==Open Questions==
 
 * Should define the format of the deploy/mint NFT transaction. Perhaps use an OP_RETURN in a secondary output that contains a JSON blob of the form:
+* Should the `OP_PUSHINPUTREFSINGLETON` be before the `OP_STATESEPARATOR` to make it easier for wallets and indexers to use the codeScriptHash to identify REP21 type tokens instead?
 
 <pre>
 {
