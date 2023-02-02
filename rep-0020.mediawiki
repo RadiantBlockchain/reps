@@ -1,5 +1,5 @@
 RECENT CHANGES:
-* (30 November 2023): Initial
+* (2 February 2023): Initial
 <pre>
   REP: 20
   Layer: Script
@@ -15,33 +15,62 @@ RECENT CHANGES:
 
 ==Abstract==
 
-tbd 
+Introduce a simple and powerful contract template that allows the minting of an arbitrary quantity of a fungible token, wherein each photon (satoshi) represents a single unit of the token. In essence the photon (satoshi) is a colored coin that can only be spent if the total inputs matches the total of the outputs of the same token type. 
+
+Scalable peer-to-peer fungible tokens gives rise to all kinds of use cases from points, rewards and much more.
 
 ==Copyright==
 
 This REP is licensed under the 2-clause BSD license.
 
 ==Motivation==
- 
- tbd
 
- 
-===Conventions===
+The motivation is to deliver a scalable peer-to-peer fungible token protocol on Radiant. Solving the colored coins problem forever and enabling use cases from tokens, loyalty points, coupons and anything else that can be imagined.
 
-tbd
-  
 ===Use cases===
 
-tbd 
+Securities, points, rewards, tokens, coupons, and so much more can be 
 
-==Security==
+==Script==
 
-tbd
+Let $pkh the public key hash of the current owner of the token
+Let $ref be the unique reference of the minting of the initial supply.
+
+<pre>
+// P2PKH. Could have other scripts here
+OP_DUP OP_HASH160 $pkh OP_EQUALVERIFY OP_CHECKSIGVERIFY
+OP_STATESEPARATOR
+// Token ref
+OP_PUSHINPUTREF $ref
+// Get this input's code script hash (double hash of code after OP_STATESEPARATOR)
+OP_INPUTINDEX OP_CODESCRIPTBYTECODE_UTXO OP_HASH256 OP_DUP
+// Check token ref is only used in outputs with matching code script hash
+// This prevents the ref being used in other scripts, which would allow anyone to inflate supply or create fraudulent tokens
+OP_CODESCRIPTHASHOUTPUTCOUNT_OUTPUTS OP_ROT OP_REFOUTPUTCOUNT_OUTPUTS OP_NUMEQUALVERIFY
+// Check token input value equals output value
+OP_DUP OP_CODESCRIPTHASHVALUESUM_UTXOS OP_SWAP OP_CODESCRIPTHASHVALUESUM_OUTPUTS OP_NUMEQUAL
+</pre>
 
 ===Implications===
- 
-==Test Samples==
- 
+
+* Each photon (satoshi) represents a single indivisible unit of a fungible token which means there are 0 decimal places natively. A major benefit is that tokens need to be backed by Radiant to be minted, discouraging arbitrary inflation of tokens and requiring a minimal initial capital allocation (however small).
+* Decimal places could be emulated in the UI layer and with a convention that the minting/deploy function specify the intended configuration so that wallets can correctly show the decimal.
+* The minting event establishes the unique $ref for the lifetime of the tokens.
+
+==Open Questions==
+
+* Should issuer be added as pkh to be able to revoke or destroy tokens?
+* Should define the format of the deploy/mint transaction. Perhaps use an OP_RETURN in a secondary output that contains a JSON blob of the form:
+
+<pre>
+{
+  "name": "Acme Token",
+  "symbol": "ACT",
+  "decimals": 0,
+  "url": "...",
+  "icon": "..."
+}
+</pre>
+
 ==Acknowledgements==
 
-*  
