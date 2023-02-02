@@ -1,5 +1,5 @@
 RECENT CHANGES:
-* (30 November 2023): Initial
+* (2 February 2023): Initial
 <pre>
   REP: 21
   Layer: Script
@@ -15,33 +15,103 @@ RECENT CHANGES:
 
 ==Abstract==
 
-tbd 
+Introduce a simple and powerful contract template that allows the minting of a Non-Fungible Token that is backed by an arbitrary amount of Radiant photons.
+
+Scalable peer-to-peer non-fungible tokens gives rise to all kinds of use cases such as social media, digital identity, events, tickets, coupons and digital collectibles.
 
 ==Copyright==
 
 This REP is licensed under the 2-clause BSD license.
 
 ==Motivation==
- 
- tbd
 
- 
-===Conventions===
+The motivation is to deliver a scalable peer-to-peer non-fungible token protocol on Radiant.
 
-tbd
-  
 ===Use cases===
 
-tbd 
+Social media, digital identity, events, tickets, coupons and digital collectibles.
 
-==Security==
+==RadiantScript==
 
-tbd
+<pre>
+
+pragma radiantscript ^0.1.0;
+
+// There can only be one unique output that contains the reference, using the singleton pattern
+contract NonFungibleToken(bytes36 constant $ref, bytes20 constant $pkh)(sig s, pubkey pk) {
+    // The state code runs for every method
+    state {
+        require(hash160(pk) == $pkh);
+        require(checkSig(s, pk));
+    }
+
+    bytes36 ref = pushInputRefSingleton($ref);
+
+    // Transfer the NFT to a new owner, ensuring that OP_PUSHINPUTREFSINGLETON is enforced
+    function transfer() {
+        int inputRefType = tx.inputs.refType(ref);
+        int outputRefType = tx.outputs.refType(ref);
+        if (inputRefType == 2 && outputRefType == 2) {
+            require(true); 
+        }
+        require(false);
+    }
+    // Destroy the NFT, ensuring there the reference cannot be passed on by using
+    // OP_DISALLOWPUSHINPUTREF and OP_DISALLOWPUSHINPUTREFSIBLING
+    function melt() {
+        require(tx.outputs.length > 0);
+        require(tx.outputs[0].value == 0);
+        require(tx.outputs[0].lockingBytecode == bytes(0x6ad2) + ref + bytes(0xd3) + ref);
+    }
+}
+</pre>
+
+==Raw Script==
+
+Let <b>$pkh</b> the public key hash of the current owner of the nft.
+
+Let <b>$ref</b> be the unique (singleton) reference of the minting of the nft.
+
+<pre>
+// P2PKH. Could have other scripts here
+OP_DUP OP_HASH160 $pkh OP_EQUALVERIFY OP_CHECKSIGVERIFY 
+OP_STATESEPARATOR
+// Singleton Token ref
+OP_PUSHINPUTREFSINGLETON $ref
+
+// The transfer function requires that there is exactly one output that contains another OP_PUSHINPUTREFSINGLETON
+OP_OVER OP_0 OP_NUMEQUAL
+OP_IF 
+  OP_DUP OP_REFTYPE_UTXO OP_SWAP OP_REFTYPE_OUTPUT OP_SWAP OP_2 OP_NUMEQUAL OP_SWAP OP_2 OP_NUMEQUAL OP_BOOLAND 
+  OP_IF 
+    OP_1 OP_VERIFY 
+  OP_ENDIF 
+  OP_DROP OP_0 
+// Alternatively, the owner of the token can chose to melt/destroy their NFT
+OP_ELSE 
+  OP_SWAP OP_1 OP_NUMEQUALVERIFY 
+  OP_TXOUTPUTCOUNT OP_0 OP_GREATERTHAN OP_VERIFY 
+  OP_0 OP_OUTPUTVALUE OP_0 OP_NUMEQUALVERIFY OP_0 
+  OP_OUTPUTBYTECODE 6ad2 OP_2 OP_PICK OP_CAT d3 OP_CAT OP_ROT OP_CAT OP_EQUAL 
+OP_ENDIF
+</pre>
 
 ===Implications===
- 
-==Test Samples==
- 
-==Acknowledgements==
 
-*  
+* Each NFT is backed by an arbitrary amount of photos (satoshis) to give intrinsic value to the item. The owner can melt/destroy the NFT at anytime and recover the original Radiant photos, ending the lifecycle of the NFT
+* The minting event establishes the unique $ref for the lifetime of the tokens.
+
+==Open Questions==
+
+* Should define the format of the deploy/mint NFT transaction. Perhaps use an OP_RETURN in a secondary output that contains a JSON blob of the form:
+
+<pre>
+{
+  "name": "RadiantInuNFT",
+  "url": "...",
+  "icon": "..."
+  "issuer": "..."
+}
+</pre>
+
+==Acknowledgements==
