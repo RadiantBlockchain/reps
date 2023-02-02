@@ -33,8 +33,9 @@ Securities, points, rewards, tokens, coupons, and so much more can be
 
 ==Script==
 
-Let $pkh the public key hash of the current owner of the token
-Let $ref be the unique reference of the minting of the initial supply.
+Let <b>$pkh</b> the public key hash of the current owner of the token.
+
+Let <b>$ref</b> be the unique reference of the minting of the initial supply.
 
 <pre>
 // P2PKH. Could have other scripts here
