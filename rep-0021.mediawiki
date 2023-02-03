@@ -96,6 +96,64 @@ OP_ELSE
 OP_ENDIF
 </pre>
 
+===Compiled with RadiantScript Interpretor===
+
+<pre>
+cashc % node ./dist/main/cashc-cli.js ./contracts/nonfungible.rad
+{
+  "version": 9,
+  "compilerVersion": "radc 0.1.0",
+  "contract": "NonFungibleToken",
+  "abi": [
+    {
+      "type": "function",
+      "name": "transfer",
+      "index": 0,
+      "params": [
+        {
+          "name": "s",
+          "type": "Sig"
+        },
+        {
+          "name": "pk",
+          "type": "PubKey"
+        }
+      ]
+    },
+    {
+      "type": "function",
+      "name": "melt",
+      "index": 1,
+      "params": [
+        {
+          "name": "s",
+          "type": "Sig"
+        },
+        {
+          "name": "pk",
+          "type": "PubKey"
+        }
+      ]
+    },
+    {
+      "type": "constructor",
+      "params": [
+        {
+          "name": "ref",
+          "type": "bytes"
+        },
+        {
+          "name": "pkh",
+          "type": "Ripemd160"
+        }
+      ]
+    }
+  ],
+  "asm": "OP_DUP OP_HASH160 $pkh OP_EQUALVERIFY OP_CHECKSIGVERIFY OP_PUSHINPUTREFSINGLETON $ref OP_DROP OP_STATESEPARATOR OP_DUP OP_0 OP_NUMEQUAL OP_IF $ref OP_REFTYPE_UTXO OP_2 OP_NUMEQUAL $ref OP_REFTYPE_OUTPUT OP_2 OP_NUMEQUAL OP_BOOLAND OP_IF OP_1 OP_VERIFY OP_ELSE OP_0 OP_VERIFY OP_ENDIF OP_DROP OP_1 OP_ELSE OP_1 OP_NUMEQUALVERIFY OP_TXOUTPUTCOUNT OP_0 OP_GREATERTHAN OP_VERIFY OP_0 OP_OUTPUTVALUE OP_0 OP_GREATERTHANOREQUAL OP_VERIFY OP_0 OP_OUTPUTBYTECODE 6ad2 $ref OP_CAT d3 OP_CAT $ref OP_CAT OP_EQUAL OP_ENDIF",
+  "hex": "76a9<pkh>88add8<ref>75bd76009c63<ref>d9529c<ref>da529c9a63516967006968755167519dc400a06900cc00a26900cd026ad2<ref>7e01d37e<ref>7e8768"
+}
+</pre>
+
 ===Implications===
 
 * Each NFT is backed by an arbitrary amount of photos (satoshis) to give intrinsic value to the item. The owner can melt/destroy the NFT at anytime and recover the original Radiant photos, ending the lifecycle of the NFT
