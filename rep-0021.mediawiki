@@ -1,5 +1,7 @@
 RECENT CHANGES:
 * (2 February 2023): Initial
+* (3 February 2023): Update to move $ref to the state section to create a uniform codeScriptHash. Fixed a bug with logic.
+
 <pre>
   REP: 21
   Layer: Script
@@ -34,7 +36,6 @@ Social media, digital identity, events, tickets, coupons and digital collectible
 ==RadiantScript==
 
 <pre>
-
 pragma radiantscript ^0.1.0;
 
 // There can only be one unique output that contains the reference, using the singleton pattern
@@ -43,25 +44,23 @@ contract NonFungibleToken(bytes36 constant $ref, bytes20 constant $pkh)(sig s, p
     state {
         require(hash160(pk) == $pkh);
         require(checkSig(s, pk));
+        pushInputRefSingleton($ref);
     }
-
-    bytes36 ref = pushInputRefSingleton($ref);
 
     // Transfer the NFT to a new owner, ensuring that OP_PUSHINPUTREFSINGLETON is enforced
     function transfer() {
-        int inputRefType = tx.inputs.refType(ref);
-        int outputRefType = tx.outputs.refType(ref);
-        if (inputRefType == 2 && outputRefType == 2) {
+        if (tx.inputs.refType($ref) == 2 && tx.outputs.refType($ref) == 2) {
             require(true); 
+        } else {
+            require(false);
         }
-        require(false);
     }
     // Destroy the NFT, ensuring there the reference cannot be passed on by using
     // OP_DISALLOWPUSHINPUTREF and OP_DISALLOWPUSHINPUTREFSIBLING
     function melt() {
         require(tx.outputs.length > 0);
-        require(tx.outputs[0].value == 0);
-        require(tx.outputs[0].lockingBytecode == bytes(0x6ad2) + ref + bytes(0xd3) + ref);
+        require(tx.outputs[0].value >= 0);
+        require(tx.outputs[0].lockingBytecode == bytes(0x6ad2) + $ref + bytes(0xd3) + $ref);
     }
 }
 </pre>
@@ -75,24 +74,25 @@ Let <b>$ref</b> be the unique (singleton) reference of the minting of the nft.
 <pre>
 // P2PKH. Could have other scripts here
 OP_DUP OP_HASH160 $pkh OP_EQUALVERIFY OP_CHECKSIGVERIFY 
-OP_STATESEPARATOR
 // Singleton Token ref
-OP_PUSHINPUTREFSINGLETON $ref
+OP_PUSHINPUTREFSINGLETON $ref OP_DROP 
+OP_STATESEPARATOR 
 
 // The transfer function requires that there is exactly one output that contains another OP_PUSHINPUTREFSINGLETON
-OP_OVER OP_0 OP_NUMEQUAL
+OP_DUP OP_0 OP_NUMEQUAL 
 OP_IF 
-  OP_DUP OP_REFTYPE_UTXO OP_SWAP OP_REFTYPE_OUTPUT OP_SWAP OP_2 OP_NUMEQUAL OP_SWAP OP_2 OP_NUMEQUAL OP_BOOLAND 
+  $ref OP_REFTYPE_UTXO OP_2 OP_NUMEQUAL $ref OP_REFTYPE_OUTPUT OP_2 OP_NUMEQUAL OP_BOOLAND 
   OP_IF 
     OP_1 OP_VERIFY 
+  OP_ELSE 
+   OP_0 OP_VERIFY 
   OP_ENDIF 
-  OP_DROP OP_0 
+  OP_DROP OP_1 
 // Alternatively, the owner of the token can chose to melt/destroy their NFT
 OP_ELSE 
-  OP_SWAP OP_1 OP_NUMEQUALVERIFY 
-  OP_TXOUTPUTCOUNT OP_0 OP_GREATERTHAN OP_VERIFY 
-  OP_0 OP_OUTPUTVALUE OP_0 OP_NUMEQUALVERIFY OP_0 
-  OP_OUTPUTBYTECODE 6ad2 OP_2 OP_PICK OP_CAT d3 OP_CAT OP_ROT OP_CAT OP_EQUAL 
+   OP_1 OP_NUMEQUALVERIFY OP_TXOUTPUTCOUNT OP_0 OP_GREATERTHAN OP_VERIFY 
+   OP_0 OP_OUTPUTVALUE OP_0 OP_GREATERTHANOREQUAL OP_VERIFY 
+   OP_0 OP_OUTPUTBYTECODE 6ad2 $ref OP_CAT d3 OP_CAT $ref OP_CAT OP_EQUAL 
 OP_ENDIF
 </pre>
 
@@ -104,7 +104,6 @@ OP_ENDIF
 ==Open Questions==
 
 * Should define the format of the deploy/mint NFT transaction. Perhaps use an OP_RETURN in a secondary output that contains a JSON blob of the form:
-* Should the `OP_PUSHINPUTREFSINGLETON` be before the `OP_STATESEPARATOR` to make it easier for wallets and indexers to use the codeScriptHash to identify REP21 type tokens instead?
 
 <pre>
 {
