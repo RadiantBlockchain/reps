@@ -2,6 +2,7 @@ RECENT CHANGES:
 * (2 February 2023): Initial
 * (3 February 2023): Update to move $ref to the state section to create a uniform codeScriptHash. Fixed a bug with logic.
 * (4 February 2023): Remove unncessary check for OP_PUSHINPUTREFSINGLETON on the inputs.
+* (4 February 2023): Remove unncessary checks for melting
 
 <pre>
   REP: 21
@@ -52,12 +53,9 @@ contract NonFungibleToken(bytes36 constant $ref, bytes20 constant $pkh)(sig s, p
     function transfer() {
         require(tx.outputs.refType($ref) == 2); 
     }
-    // Destroy the NFT, ensuring there the reference cannot be passed on by using
-    // OP_DISALLOWPUSHINPUTREF and OP_DISALLOWPUSHINPUTREFSIBLING
+    // Destroy the NFT, ensuring the reference cannot be passed on
     function melt() {
-        require(tx.outputs.length > 0);
-        require(tx.outputs[0].value >= 0);
-        require(tx.outputs[0].lockingBytecode == bytes(0x6ad2) + $ref + bytes(0xd3) + $ref);
+        require(tx.outputs.refType($ref) == 0);
     }
 }
 </pre>
@@ -73,6 +71,7 @@ Let <b>$ref</b> be the unique (singleton) reference of the minting of the nft.
 OP_DUP OP_HASH160 $pkh OP_EQUALVERIFY OP_CHECKSIGVERIFY 
 // Singleton Token ref
 OP_PUSHINPUTREFSINGLETON $ref OP_DROP 
+
 OP_STATESEPARATOR 
 
 // The transfer function requires that there is exactly one output that contains another OP_PUSHINPUTREFSINGLETON
@@ -80,11 +79,9 @@ OP_DUP OP_0 OP_NUMEQUAL
 OP_IF 
   $ref OP_REFTYPE_OUTPUT OP_2 OP_NUMEQUAL OP_NIP 
 OP_ELSE 
-  // Alternatively, the owner of the token can chose to melt/destroy their NFT
-  OP_1 OP_NUMEQUALVERIFY OP_TXOUTPUTCOUNT OP_0 OP_GREATERTHAN OP_VERIFY 
-  OP_0 OP_OUTPUTVALUE OP_0 OP_GREATERTHANOREQUAL OP_VERIFY 
-  OP_0 OP_OUTPUTBYTECODE 6ad2 $ref OP_CAT d3 OP_CAT $ref OP_CAT OP_EQUAL 
+  OP_1 OP_NUMEQUALVERIFY $ref OP_REFTYPE_OUTPUT OP_0 OP_NUMEQUAL 
 OP_ENDIF
+
 </pre>
 
 ===Compiled with RadiantScript Interpretor===
@@ -140,8 +137,8 @@ cashc % node ./dist/main/cashc-cli.js ./contracts/nonfungible.rad
       ]
     }
   ],
-  "asm": "OP_DUP OP_HASH160 $pkh OP_EQUALVERIFY OP_CHECKSIGVERIFY OP_PUSHINPUTREFSINGLETON $ref OP_DROP OP_STATESEPARATOR OP_DUP OP_0 OP_NUMEQUAL OP_IF $ref OP_REFTYPE_OUTPUT OP_2 OP_NUMEQUAL OP_NIP OP_ELSE OP_1 OP_NUMEQUALVERIFY OP_TXOUTPUTCOUNT OP_0 OP_GREATERTHAN OP_VERIFY OP_0 OP_OUTPUTVALUE OP_0 OP_GREATERTHANOREQUAL OP_VERIFY OP_0 OP_OUTPUTBYTECODE 6ad2 $ref OP_CAT d3 OP_CAT $ref OP_CAT OP_EQUAL OP_ENDIF",
-  "hex": "76a9<pkh>88add8<ref>75bd76009c63<ref>da529c7767519dc400a06900cc00a26900cd026ad2<ref>7e01d37e<ref>7e8768"
+  "asm": "OP_DUP OP_HASH160 $pkh OP_EQUALVERIFY OP_CHECKSIGVERIFY OP_PUSHINPUTREFSINGLETON $ref OP_DROP OP_STATESEPARATOR OP_DUP OP_0 OP_NUMEQUAL OP_IF $ref OP_REFTYPE_OUTPUT OP_2 OP_NUMEQUAL OP_NIP OP_ELSE OP_1 OP_NUMEQUALVERIFY $ref OP_REFTYPE_OUTPUT OP_0 OP_NUMEQUAL OP_ENDIF",
+  "hex": "76a9<pkh>88add8<ref>75bd76009c63<ref>da529c7767519d<ref>da009c68"
 }
 </pre>
 
