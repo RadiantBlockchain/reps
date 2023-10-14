@@ -1,163 +1,172 @@
-RECENT CHANGES:
-* (2 February 2023): Initial
-* (3 February 2023): Update to move $ref to the state section to create a uniform codeScriptHash. Fixed a bug with logic.
-* (4 February 2023): Remove unncessary check for OP_PUSHINPUTREFSINGLETON on the inputs.
-* (4 February 2023): Remove unncessary checks for melting
-
 <pre>
   REP: 21
-  Layer: Script
   Title: Non-Fungible Tokens (NFT)
-  Author: Arvivi
+  Author: The Photonic Developers
   Comments-Summary: No comments yet.
-  Comments-URI: https://github.com/radiantblockchain/reps/wiki/Comments:REP-0021
-  Status: Process
-  Type: Draft
-  Created: 2022-11-30
+  Comments-URI: https://github.com/radiantblockchain/reps
+  Status: Draft
+  Type: Process
+  Created: 2023-10-09
   License: BSD-2-Clause
 </pre>
 
 ==Abstract==
-
-Introduce a simple and powerful contract template that allows the minting of a Non-Fungible Token that is backed by an arbitrary amount of Radiant photons.
-
-Scalable peer-to-peer non-fungible tokens gives rise to all kinds of use cases such as social media, digital identity, events, tickets, coupons and digital collectibles.
-
-==Copyright==
-
-This REP is licensed under the 2-clause BSD license.
+This REP introduces a simple, powerful and extensible non-fungible token protocol based on [https://docs.atomicals.xyz Atomicals]. The protocol will allow the minting, modification and transfer of tokens backed by an arbitrary amount of Radiant photons. It is extensible, allowing future REPs to introduce additional functionality.
 
 ==Motivation==
+The motivation is to deliver a scalable peer-to-peer non-fungible token protocol on Radiant. Scalable peer-to-peer non-fungible tokens gives rise to all kinds of use cases such as social media, digital identity, events, tickets, coupons and digital collectibles.
 
-The motivation is to deliver a scalable peer-to-peer non-fungible token protocol on Radiant.
+The Atomicals protocol will be used with some modifications that allow it to work on Radiant and benefit from the induction proof system. Using the Atomicals protocol will allow Radiant to take advantage of the Atomicals ecosystem and encourage interoperability between blockchains.
 
-===Use cases===
+This REP implements a subset of Atomicals features, covering mutable and immutable NFTs and containers. The solution proposed provides much of the functionality required by many token use cases, while building a foundation for further upgrades and Atomicals features.
 
-Social media, digital identity, events, tickets, coupons and digital collectibles.
+==Specification==
+A token is created in two steps:
 
-==RadiantScript==
+* Create a commit UTXO.
+* Spend the commit UTXO, revealing token content in the unlocking script. A singleton referencing the commit UTXO is created in an output, representing ownership of the token.
 
-<pre>
-pragma radiantscript ^0.1.0;
+The singleton may be transferred, with the reference maintaining the relationship to the mint transaction and its contained data. With Radiant's induction proof system new owners of the token can be confident of the authenticity of the token without having to trace all transactions back to the mint event.
 
-// There can only be one unique output that contains the reference, using the singleton pattern
-contract NonFungibleToken(bytes36 constant $ref, bytes20 constant $pkh)(sig s, pubkey pk) {
-    // The state code runs for every method
-    state {
-        require(hash160(pk) == $pkh);
-        require(checkSig(s, pk));
-        pushInputRefSingleton($ref);
-    }
+A token flagged as mutable may be modified by repeating the commit-reveal process and saving a reference to the modification event in the token UTXO.
 
-    // Transfer the NFT to a new owner, ensuring that OP_PUSHINPUTREFSINGLETON is enforced
-    function transfer() {
-        require(tx.outputs.refType($ref) == 2); 
-    }
-    // Destroy the NFT, ensuring the reference cannot be passed on
-    function melt() {
-        require(tx.outputs.refType($ref) == 0);
-    }
-}
-</pre>
+===Reveal transaction===
+The reveal transaction must contain the atom header and payload anywhere within the unlocking script of the commit UTXO being spent.
 
-==Raw Script==
-
-Let <b>$pkh</b> the public key hash of the current owner of the nft.
-
-Let <b>$ref</b> be the unique (singleton) reference of the minting of the nft.
+The atom header consists of three data pushes:
+* "atom" followed by a version byte
+* "nft" operation
+* CBOR encoded token data
 
 <pre>
-// P2PKH. Could have other scripts here
-OP_DUP OP_HASH160 $pkh OP_EQUALVERIFY OP_CHECKSIGVERIFY 
-// Singleton Token ref
-OP_PUSHINPUTREFSINGLETON $ref OP_DROP 
-
-OP_STATESEPARATOR 
-
-// The transfer function requires that there is exactly one output that contains another OP_PUSHINPUTREFSINGLETON
-OP_DUP OP_0 OP_NUMEQUAL 
-OP_IF 
-  $ref OP_REFTYPE_OUTPUT OP_2 OP_NUMEQUAL OP_NIP 
-OP_ELSE 
-  OP_1 OP_NUMEQUALVERIFY $ref OP_REFTYPE_OUTPUT OP_0 OP_NUMEQUAL 
-OP_ENDIF
-
+// atom v1, nft, CBOR payload
+0x61746f6d01 0x6E6674 <payloadBytes>
 </pre>
 
-===Compiled with RadiantScript Interpretor===
+The CBOR payload may include metadata, images or any other content relevant to the token.
+
+===Commit transaction===
+The commit output must be created in a way that allows the atom header and payload to be provided in the unlocking script.
+
+Any unlocking conditions may be defined by the developer. It may be necessary in some cases for the script to provide guarantees about what will be contained in the payload. For example, the following script enforces a valid atom header with payload matching a specific hash, and the creation of a singleton from the commit UTXO.
 
 <pre>
-cashc % node ./dist/main/cashc-cli.js ./contracts/nonfungible.rad
-{
-  "version": 9,
-  "compilerVersion": "radc 0.1.0",
-  "contract": "NonFungibleToken",
-  "abi": [
-    {
-      "type": "function",
-      "name": "transfer",
-      "index": 0,
-      "params": [
-        {
-          "name": "s",
-          "type": "Sig"
-        },
-        {
-          "name": "pk",
-          "type": "PubKey"
-        }
-      ]
-    },
-    {
-      "type": "function",
-      "name": "melt",
-      "index": 1,
-      "params": [
-        {
-          "name": "s",
-          "type": "Sig"
-        },
-        {
-          "name": "pk",
-          "type": "PubKey"
-        }
-      ]
-    },
-    {
-      "type": "constructor",
-      "params": [
-        {
-          "name": "ref",
-          "type": "bytes"
-        },
-        {
-          "name": "pkh",
-          "type": "Ripemd160"
-        }
-      ]
-    }
-  ],
-  "asm": "OP_DUP OP_HASH160 $pkh OP_EQUALVERIFY OP_CHECKSIGVERIFY OP_PUSHINPUTREFSINGLETON $ref OP_DROP OP_STATESEPARATOR OP_DUP OP_0 OP_NUMEQUAL OP_IF $ref OP_REFTYPE_OUTPUT OP_2 OP_NUMEQUAL OP_NIP OP_ELSE OP_1 OP_NUMEQUALVERIFY $ref OP_REFTYPE_OUTPUT OP_0 OP_NUMEQUAL OP_ENDIF",
-  "hex": "76a9<pkh>88add8<ref>75bd76009c63<ref>da529c7767519d<ref>da009c68"
-}
+// Hash the CBOR payload and verify
+OP_HASH256 <payloadHash> OP_EQUALVERIFY
+
+// atom nft header must be present
+0x6E6674 OP_EQUALVERIFY
+0x61746f6d01 OP_EQUALVERIFY
+
+// Ensure singleton for this input exists in an output
+// Build a ref for this UTXO
+OP_INPUTINDEX OP_OUTPOINTTXHASH OP_INPUTINDEX OP_OUTPOINTINDEX OP_4 OP_NUM2BIN OP_CAT
+// Check the ref exists as a singleton in any output
+OP_REFTYPE_OUTPUT OP_2 OP_NUMEQUALVERIFY
 </pre>
 
-===Implications===
-
-* Each NFT is backed by an arbitrary amount of photos (satoshis) to give intrinsic value to the item. The owner can melt/destroy the NFT at anytime and recover the original Radiant photos, ending the lifecycle of the NFT
-* The minting event establishes the unique $ref for the lifetime of the tokens.
-
-==Open Questions==
-
-* Should define the format of the deploy/mint NFT transaction. Perhaps use an OP_RETURN in a secondary output that contains a JSON blob of the form:
+===Token data encoding===
+Token data is encoded according to the Atomicals CBOR payload format. For example:
 
 <pre>
 {
-  "name": "RadiantInuNFT",
-  "url": "...",
-  "icon": "..."
-  "issuer": "..."
+    "args": {
+        "$i": true // Token is immutable
+    },
+    "meta": {
+        "name": "My token",
+        "desc": "A digital collectible",
+    },
+    "image.jpg": {
+        "$ct": "image/jpeg", // Content type
+        "$b": bytes // Binary data
+    },
+    "in": [containerRef]
 }
 </pre>
 
-==Acknowledgements==
+Metadata is stored in the <code>meta</code> object. Embedded files must be stored in the root object and contain the <code>$ct</code> (content type) and <code>$b</code> (bytes) properties.
+
+Immutable tokens must have <code>args.$i</code> set to <code>true</code>. If this value is omitted, tokens will be considered mutable.
+
+===Token script===
+The token script produced by the mint transaction must contain a singleton followed by a P2PKH script.
+
+<pre>
+OP_PUSHINPUTREFSINGLETON <tokenRef> OP_DROP
+OP_DUP OP_HASH160 <pkh> OP_EQUALVERIFY OP_CHECKSIG
+</pre>
+
+The singleton acts as a token identifier and matches the commit outpoint. Since this does not point to the reveal transaction, wallets needing to fetch the token data must query a singleton index. The singleton index provides the singleton creation transaction containing the token data, and the wallet can render the content accordingly.
+
+This UTXO may contain any number of Radiant photons.
+
+===Transfer===
+The token is transferred by spending the token UTXO and carrying forward the singleton reference to the next output. The number of photons backing the token may change.
+
+===Modify===
+A mutable token can be modified using the <code>mod</code> operation and providing a new token payload to replace the data in the mint transaction.
+
+A commit-reveal transaction similar to the mint must be used so the atom header and payload can be provided in the unlocking script.
+
+<pre>
+// atom v1, mod, CBOR payload
+0x61746f6d01 0x6d6f64 <payloadBytes>
+</pre>
+
+The payload replaces the object in the mint, however <code>init</code> and <code>args</code> values cannot be changed.
+
+When a token is modified, the token script must contain a reference to the input script containing the mod operation.
+
+<pre>
+OP_PUSHINPUTREF <modRef>
+OP_PUSHINPUTREFSINGLETON <tokenRef> OP_2DROP
+OP_DUP OP_HASH160 <pkh> OP_EQUALVERIFY OP_CHECKSIG
+</pre>
+
+The normal ref and the singleton ref must be carried forward with each transfer. Any future modification will replace the mod ref. Removing the mod ref will revert the token back to the mint data.
+
+===Melt===
+A token is melted by destroying the singleton reference. This is done by either spending the token without carrying forward the singleton, or by outputting the singleton to an unspendable output.
+
+It is recommended to use an unspendable <code>OP_RETURN</code> output for more efficient indexing and only requiring a single transaction to verify token melting.
+
+The photons contained in the token can be returned to the user's wallet.
+
+===Relationships===
+Relationships to other tokens can be described in the token payload using the related token's ref. For example:
+
+<pre>
+{
+    "in": [containerRef], // Containers
+    "by": [authorRef], // Authors
+}
+</pre>
+
+Related tokens should have an <code>OP_REQUIREINPUTREF</code> opcode in the commit script to prove the creator has control over the related tokens.
+
+<pre>
+OP_REQUIREINPUTREF <ref> OP_DROP
+</pre>
+
+An author relationship is recommended to provide a way of authenticating a token creator and filtering out spam or fradulent tokens.
+
+Relationships used in a <code>mod</code> operation must also have a <code>OP_REQUIREINPUTREF</code> in the commit script.
+
+===Reserved properties===
+<code>args</code>, <code>ctx</code>, <code>meta</code>, <code>init</code>, <code>in</code> and any property starting with <code>$</code> are reserved by the Atomicals protocol.
+
+===Mutable upgrade output===
+It is recommended to mint mutable tokens with the ref following the token ref reserved for future upgrades. For example, a token minted with ref <code>ABCD...0002</code> will have ref <code>ABCD...0003</code> reserved. This will permit the token to be upgraded to use a composition model implemented in a future REP.
+
+Reserve script:
+
+<pre>
+// atom v1, res
+0x61746f6d01 0x726573 OP_2DROP
+OP_PUSHINPUTREFSINGLETON <reservedRef> OP_DROP
+OP_DUP OP_HASH160 <pkh> OP_EQUALVERIFY OP_CHECKSIG
+</pre>
+
+==References==
+* [https://docs.atomicals.xyz Atomicals Guidebook]
