@@ -71,7 +71,7 @@ Token data is encoded according to the Atomicals CBOR payload format. For exampl
 <pre>
 {
     "args": {
-        "$i": true // Token is immutable
+        "i": true // Token is immutable
     },
     "meta": {
         "name": "My token",
@@ -87,7 +87,7 @@ Token data is encoded according to the Atomicals CBOR payload format. For exampl
 
 Metadata is stored in the <code>meta</code> object. Embedded files must be stored in the root object and contain the <code>$ct</code> (content type) and <code>$b</code> (bytes) properties.
 
-Immutable tokens must have <code>args.$i</code> set to <code>true</code>. If this value is omitted, tokens will be considered mutable.
+Immutable tokens must have <code>args.i</code> set to <code>true</code>. If this value is omitted, tokens will be considered mutable.
 
 ===Token script===
 The token script produced by the mint transaction must contain a singleton followed by a P2PKH script.
@@ -143,6 +143,8 @@ Relationships to other tokens can be described in the token payload using the re
 }
 </pre>
 
+Refs must be encoded as a byte string with little-endian byte order, as used in any push ref opcode.
+
 Related tokens should have an <code>OP_REQUIREINPUTREF</code> opcode in the commit script to prove the creator has control over the related tokens.
 
 <pre>
@@ -154,19 +156,7 @@ An author relationship is recommended to provide a way of authenticating a token
 Relationships used in a <code>mod</code> operation must also have a <code>OP_REQUIREINPUTREF</code> in the commit script.
 
 ===Reserved properties===
-<code>args</code>, <code>ctx</code>, <code>meta</code>, <code>init</code>, <code>in</code> and any property starting with <code>$</code> are reserved by the Atomicals protocol.
-
-===Mutable upgrade output===
-It is recommended to mint mutable tokens with the ref following the token ref reserved for future upgrades. For example, a token minted with ref <code>ABCD...0002</code> will have ref <code>ABCD...0003</code> reserved. This will permit the token to be upgraded to use a composition model implemented in a future REP.
-
-Reserve script:
-
-<pre>
-// atom v1, res
-0x61746f6d01 0x726573 OP_2DROP
-OP_PUSHINPUTREFSINGLETON <reservedRef> OP_DROP
-OP_DUP OP_HASH160 <pkh> OP_EQUALVERIFY OP_CHECKSIG
-</pre>
+<code>args</code>, <code>ctx</code>, <code>meta</code>, <code>init</code> and <code>in</code> are reserved by the Atomicals protocol.
 
 ==References==
 * [https://docs.atomicals.xyz Atomicals Guidebook]
